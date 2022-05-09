@@ -1,0 +1,12 @@
+Customer Email(1) For testing: pialshek08@gmail.com
+Customer password For testing: customer12345
+Customer Email(2) For testing: pialshek80@gmail.com
+Customer password For testing: customer12345
+
+
+------------------------------------------
+
+Admin Email(1) for testing: admin1@pathao.com
+Admin Password For testing: admin-pathao
+Admin Email(2) for testing: admin2@pathao.com
+Admin Password For testing: admin-pathao
