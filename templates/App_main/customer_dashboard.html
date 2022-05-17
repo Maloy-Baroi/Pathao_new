@@ -177,7 +177,11 @@
             <tbody>
             {% for product in products %}
                 <tr>
-                    <td data-label="Product Name">{{ product.product_name }}</td>
+                    {% if product.product_name in prod_name %}
+                        <td data-label="Product Name" style="color: #e40101">{{ product.product_name }}</td>
+                    {% else %}
+                        <td data-label="Product Name">{{ product.product_name }}</td>
+                    {% endif %}
                     <td data-label="Images">
                         <img class="product-image-cls" src="{{ product.image.url }}" alt="Image">
                     </td>

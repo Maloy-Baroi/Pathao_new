@@ -1,4 +1,4 @@
-{% extends 'App_main/Admin_base.html' %}
+{% extends 'App_main/BossAdmin_base.html' %}
 {% load static %}
 {% load crispy_forms_filters %}
 {% block main %}
@@ -140,7 +140,7 @@
         {% endfor %}
     {% endif %}
     <!-- Modal -->
-    <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel"
+    <div class="modal fade" id="AdminFormModal" tabindex="-1" aria-labelledby="exampleModalLabel"
          aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -149,7 +149,32 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"
                             aria-label="Close"></button>
                 </div>
-                <form action="{% url 'App_main:register-with-admin' %}" method="post">
+                <form action="{% url 'App_main:boss-register-with-admin' %}" method="post">
+                    <div class="modal-body">
+                        {% csrf_token %}
+                        {{ signupForm|crispy }}
+                        <input type="checkbox" id="id-admin-checkbox" name="admin-checkbox" style="width: 4%" value="Yes" checked required>
+                        <label for="id-admin-checkbox">Admin</label>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-dark" data-bs-dismiss="modal">Close
+                        </button>
+                        <button type="submit" class="btn btn-primary">Submit</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="CustomerFormModal" tabindex="-1" aria-labelledby="exampleModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Modal</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"
+                            aria-label="Close"></button>
+                </div>
+                <form action="{% url 'App_main:boss-register-with-admin' %}" method="post">
                     <div class="modal-body">
                         {% csrf_token %}
                         {{ signupForm|crispy }}
@@ -390,11 +415,8 @@
                             <td data-label="Action">
                                 <input type="number" name="order_id" style="display: none;" value="{{ order.id }}">
                                 <select style="width: 100%" name="status_change" id="id-status-change">
-                                    <option value="Processing">Processing</option>
-{#                                    <option value="Confirm">Confirm</option>#}
-                                    <option value="Rejected">Rejected</option>
+                                    <option value="Confirmed">Confirmed</option>
                                     <option value="Completed">Completed</option>
-                                    <option value="Final approval from boss">Final approval from boss</option>
                                 </select>
                                 <div id="" class="m-1">
                                     <button class="btn btn-success m-1" type="submit">
