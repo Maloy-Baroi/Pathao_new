@@ -49,6 +49,8 @@ status_choice = (
     ('Confirmed', 'Confirmed'),
     ('Rejected', 'Rejected'),
     ('Completed', 'Completed'),
+    ('Completed', 'Completed'),
+    ('Final approval from boss', 'Final approval from boss'),
 )
 
 
@@ -59,7 +61,7 @@ class Order(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     payment_id = models.CharField(max_length=264, blank=True, null=True)
     order_id = models.CharField(max_length=264, blank=True, null=True)
-    status = models.CharField(max_length=20, default="Processing", choices=status_choice)
+    status = models.CharField(max_length=50, default="Processing", choices=status_choice)
     total_price = models.PositiveIntegerField(blank=True, null=True)
 
     def get_order_total(self):
@@ -67,7 +69,6 @@ class Order(models.Model):
         for i in self.order_items.all():
             total += i.quantity * i.item.price_per_unit
         return format(total, '0.2f')
-
 
 
 class BillingAddress(models.Model):

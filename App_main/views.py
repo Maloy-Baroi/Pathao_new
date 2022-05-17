@@ -12,7 +12,7 @@ from django.urls import reverse
 
 from App_auth.forms import SignUpForm
 from App_auth.models import Profile, User
-from App_auth.views import is_customer, is_admin
+from App_auth.views import is_customer, is_admin, is_boss_admin
 from App_main.forms import BillingForm, ProfileForm, ProductModelForm
 from App_main.models import ProductModel, Cart, Order, BillingAddress, ShortageOfProduct, CategoryModel
 
@@ -22,9 +22,13 @@ from App_main.models import ProductModel, Cart, Order, BillingAddress, ShortageO
 def customer_dashboard(request):
     c = Cart.objects.filter(user=request.user)
     products = ProductModel.objects.all()
-    total_cart = Cart.objects.filter(user=request.user).count()
+    total_cart = Cart.objects.filter(user=request.user, purchased=False)
+    cart_prod = [x.item.product_name for x in total_cart]
+    print(cart_prod)
     content = {
-        'products': products
+        'products': products,
+        'cart': total_cart,
+        'prod_name': cart_prod
     }
     return render(request, 'App_main/customer_dashboard.html', context=content)
 
@@ -214,6 +218,13 @@ def admin_dashboard(request):
     total_customer = len(allCustomers)
     total_product = ProductModel.objects.all()
     total_orders = Order.objects.all()
+    completed_orders = Order.objects.filter(status='Completed')
+    pending_order = []
+    for i, j in zip(total_orders, completed_orders):
+        if j == i:
+            pass
+        else:
+            pending_order.append(i)
     total_shortages = ShortageOfProduct.objects.all()
     content = {
         'all_customers': allCustomers,
@@ -234,8 +245,15 @@ def admin_updates_asking_quantity(request):
         quantity = request.POST.getlist('quantity')
         theOrders = Order.objects.get(id=orderID)
         for i, j in zip(theOrders.order_items.all(), quantity):
+            j_int = int(j)
+            if i.quantity < j_int:
+                i.item.No_of_available -= (j_int - i.quantity)
+            elif i.quantity > j_int:
+                i.item.No_of_available += (i.quantity - j_int)
+            i.item.save()
             i.quantity = j
             i.save()
+
         return HttpResponseRedirect(reverse('App_main:admin_dashboard'))
 
 
@@ -335,7 +353,7 @@ def add_category(request):
 @user_passes_test(is_admin)
 def admin_generates_invoice(request, OrderID):
     order = Order.objects.get(id=OrderID)
-    total = list(range(1, len(order.order_items.all())+1))
+    total = list(range(1, len(order.order_items.all()) + 1))
     zip_item = zip(total, list(order.order_items.all()))
     content = {
         'order': order,
@@ -344,3 +362,165 @@ def admin_generates_invoice(request, OrderID):
     return render(request, 'App_main/invoice_page.html', context=content)
 
 
+# <! ------- Super Admin Start ------->
+
+@login_required
+@user_passes_test(is_boss_admin)
+def boss_admin_dashboard(request):
+    form = SignUpForm()
+    total_user = User.objects.filter(is_superuser=False)
+    allCustomers = checkAdmin(list(total_user), [])
+    total_customer = len(allCustomers)
+    total_product = ProductModel.objects.all()
+    total_orders = Order.objects.all()
+    completed_orders = Order.objects.filter(status='Completed')
+    pending_order = []
+    for i, j in zip(total_orders, completed_orders):
+        if j == i:
+            pass
+        else:
+            pending_order.append(i)
+    total_shortages = ShortageOfProduct.objects.all()
+    content = {
+        'all_customers': allCustomers,
+        'total_customer': total_customer,
+        'total_product': total_product,
+        'total_orders': total_orders,
+        'total_shortage': total_shortages,
+        'signupForm': form,
+    }
+    return render(request, 'App_main/Boss_Admin_dashboard.html', context=content)
+
+
+@login_required
+@user_passes_test(is_boss_admin)
+def boss_admin_updates_asking_quantity(request):
+    if request.method == 'POST':
+        orderID = request.POST.get('orderID')
+        quantity = request.POST.getlist('quantity')
+        theOrders = Order.objects.get(id=orderID)
+        for i, j in zip(theOrders.order_items.all(), quantity):
+            j_int = int(j)
+            if i.quantity < j_int:
+                i.item.No_of_available -= (j_int - i.quantity)
+            elif i.quantity > j_int:
+                i.item.No_of_available += (i.quantity - j_int)
+            i.item.save()
+            i.quantity = j
+            i.save()
+
+        return HttpResponseRedirect(reverse('App_main:boss-admin_dashboard'))
+
+
+@login_required
+@user_passes_test(is_boss_admin)
+def boss_update_product(request):
+    if request.method == 'POST':
+        product_id = request.POST.get('product_id')
+        price = request.POST.get('price')
+        quantity = request.POST.get('quantity')
+        product = ProductModel.objects.get(id=product_id)
+        if price == "" and quantity == "":
+            return HttpResponseRedirect(reverse('App_main:boss-admin_dashboard'))
+        elif price != "" and quantity != "":
+            product.No_of_available += int(quantity)
+            product.price_per_unit = int(price)
+            product.save()
+        elif quantity == "":
+            product.price_per_unit = int(price)
+            product.save()
+        elif price == "":
+            product.No_of_available += int(quantity)
+            product.save()
+    return HttpResponseRedirect(reverse('App_main:boss-admin_dashboard'))
+
+
+@login_required
+@user_passes_test(is_boss_admin)
+def boss_delete_product(request, product_key):
+    product = ProductModel.objects.get(id=product_key)
+    product.delete()
+    return HttpResponseRedirect(reverse('App_main:boss-admin_dashboard'))
+
+
+@login_required
+@user_passes_test(is_boss_admin)
+def boss_delete_shortage_table(request, table_key):
+    shortage_table = ShortageOfProduct.objects.get(id=table_key)
+    shortage_table.delete()
+    return HttpResponseRedirect(reverse('App_main:boss-admin_dashboard'))
+
+
+@login_required
+@user_passes_test(is_boss_admin)
+def register_user_by_boss_admin(request):
+    if request.method == "POST":
+        form = SignUpForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            try:
+                adminCheckbox = request.POST.get('admin-checkbox')
+            except:
+                adminCheckbox = None
+
+            if adminCheckbox:
+                my_admin_group = Group.objects.get_or_create(name='ADMIN')
+                my_admin_group[0].user_set.add(user)
+            else:
+                my_admin_group = Group.objects.get_or_create(name='CUSTOMER')
+                my_admin_group[0].user_set.add(user)
+            messages.info(request, "Successfully Registered")
+            return HttpResponseRedirect(reverse('App_main:boss_admin_dashboard'))
+        else:
+            messages.info(request, "Password doesn't match!!!")
+            return redirect('App_main:boss-admin_dashboard')
+
+
+@login_required
+@user_passes_test(is_boss_admin)
+def boss_update_order_status(request):
+    if request.method == 'POST':
+        order_id = request.POST.get('order_id')
+        order = Order.objects.get(id=order_id)
+        order.status = request.POST.get("status_change")
+        order.save()
+        return HttpResponseRedirect(reverse('App_main:boss-admin_dashboard'))
+
+
+@login_required
+@user_passes_test(is_boss_admin)
+def boss_add_new_product(request):
+    form = ProductModelForm()
+    if request.method == 'POST':
+        form = ProductModelForm(request.POST, request.FILES)
+        if form.is_valid():
+            form.save()
+            return HttpResponseRedirect(reverse('App_main:boss-add-new-product'))
+
+    content = {
+        'form': form,
+    }
+    return render(request, 'App_main/boss_add_new_product.html', context=content)
+
+
+@login_required
+@user_passes_test(is_boss_admin)
+def boss_add_category(request):
+    if request.method == 'POST':
+        cat = request.POST.get('cat-name')
+        category = CategoryModel(name=cat)
+        category.save()
+        return HttpResponseRedirect(reverse('App_main:boss-add-new-product'))
+
+
+@login_required
+@user_passes_test(is_boss_admin)
+def boss_admin_generates_invoice(request, OrderID):
+    order = Order.objects.get(id=OrderID)
+    total = list(range(1, len(order.order_items.all()) + 1))
+    zip_item = zip(total, list(order.order_items.all()))
+    content = {
+        'order': order,
+        'total_and_order': zip_item,
+    }
+    return render(request, 'App_main/invoice_page.html', context=content)
