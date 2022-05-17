@@ -16,6 +16,10 @@ def is_admin(user):
     return user.groups.filter(name="ADMIN").exists()
 
 
+def is_boss_admin(user):
+    return user.groups.filter(name="BOSS_ADMIN").exists()
+
+
 def is_customer(user):
     return user.groups.filter(name="CUSTOMER").exists()
 
@@ -27,14 +31,13 @@ def login_view(request):
         if form.is_valid():
             user_email = form.cleaned_data.get('username')
             password = form.cleaned_data.get('password')
-            print("valid")
             user = authenticate(username=user_email, password=password)
             if user:
-                print("Authenticated")
                 login(request, user)
-                print("Logged In")
                 if is_admin(user):
                     return HttpResponseRedirect(reverse('App_main:admin_dashboard'))
+                elif is_boss_admin(user):
+                    return HttpResponseRedirect(reverse('App_main:boss_admin_dashboard'))
                 elif is_customer(user):
                     return HttpResponseRedirect(reverse('App_main:customer_dashboard'))
     content = {
@@ -62,7 +65,3 @@ def signup_view(request):
 def logout_view(request):
     logout(request)
     return HttpResponseRedirect(reverse('App_auth:login-page'))
-
-
-
-
