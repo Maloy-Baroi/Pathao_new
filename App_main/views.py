@@ -1,7 +1,9 @@
+import json
 import uuid
 
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.checks import messages
+from django.db.models import Q
 from django.http import HttpResponseRedirect
 from django.shortcuts import render, redirect
 from django.contrib import messages
@@ -12,7 +14,7 @@ from django.urls import reverse
 
 from App_auth.forms import SignUpForm
 from App_auth.models import Profile, User
-from App_auth.views import is_customer, is_admin, is_boss_admin
+from App_auth.views import is_customer, is_admin, is_boss_admin, is_admin_ISD, is_admin_OSD
 from App_main.forms import BillingForm, ProfileForm, ProductModelForm
 from App_main.models import ProductModel, Cart, Order, BillingAddress, ShortageOfProduct, CategoryModel
 
@@ -24,7 +26,6 @@ def customer_dashboard(request):
     products = ProductModel.objects.all()
     total_cart = Cart.objects.filter(user=request.user, purchased=False)
     cart_prod = [x.item.product_name for x in total_cart]
-    print(cart_prod)
     content = {
         'products': products,
         'cart': total_cart,
@@ -408,7 +409,6 @@ def boss_admin_updates_asking_quantity(request):
             i.item.save()
             i.quantity = j
             i.save()
-
         return HttpResponseRedirect(reverse('App_main:boss-admin_dashboard'))
 
 
@@ -459,12 +459,11 @@ def register_user_by_boss_admin(request):
         if form.is_valid():
             user = form.save()
             try:
-                adminCheckbox = request.POST.get('admin-checkbox')
+                adminCheckbox = request.POST.get('admin-type')
             except:
                 adminCheckbox = None
-
             if adminCheckbox:
-                my_admin_group = Group.objects.get_or_create(name='ADMIN')
+                my_admin_group = Group.objects.get_or_create(name=adminCheckbox)
                 my_admin_group[0].user_set.add(user)
             else:
                 my_admin_group = Group.objects.get_or_create(name='CUSTOMER')
@@ -524,3 +523,376 @@ def boss_admin_generates_invoice(request, OrderID):
         'total_and_order': zip_item,
     }
     return render(request, 'App_main/invoice_page.html', context=content)
+
+
+# <!-- Admin OSD -->
+
+@login_required
+@user_passes_test(is_admin_OSD)
+def OSD_admin_dashboard(request):
+    form = SignUpForm()
+    total_user = User.objects.filter(is_superuser=False, groups=2)
+    t_user = []
+    try:
+        for i in total_user:
+            if i.profile_user.shop.city != "Dhaka":
+                t_user.append(i)
+    except:
+        pass
+    total_customer = len(t_user)
+    total_product = ProductModel.objects.all()
+    total_orders = Order.objects.all()
+    t_order = []
+    try:
+        for i in total_orders:
+            if i.user.profile_user.shop.city != "Dhaka":
+                t_order.append(i)
+    except Exception as e:
+        pass
+    completed_orders = Order.objects.filter(status='Completed')
+    pending_order = []
+    for i, j in zip(total_orders, completed_orders):
+        if j == i:
+            pass
+        else:
+            pending_order.append(i)
+    total_shortages = ShortageOfProduct.objects.all()
+    content = {
+        'all_customers': t_user,
+        'total_customer': total_customer,
+        'total_product': total_product,
+        'total_orders': t_order,
+        'no_of_total_orders': len(t_order),
+        'total_shortage': total_shortages,
+        'signupForm': form,
+    }
+    return render(request, 'App_main/OSD_Admin_dashboard.html', context=content)
+
+
+@login_required
+@user_passes_test(is_admin_OSD)
+def OSD_admin_updates_asking_quantity(request):
+    if request.method == 'POST':
+        orderID = request.POST.get('orderID')
+        quantity = request.POST.getlist('quantity')
+        theOrders = Order.objects.get(id=orderID)
+        for i, j in zip(theOrders.order_items.all(), quantity):
+            j_int = int(j)
+            if i.quantity < j_int:
+                i.item.No_of_available -= (j_int - i.quantity)
+            elif i.quantity > j_int:
+                i.item.No_of_available += (i.quantity - j_int)
+            i.item.save()
+            i.quantity = j
+            i.save()
+        return HttpResponseRedirect(reverse('App_main:OSD_admin_dashboard'))
+
+
+@login_required
+@user_passes_test(is_admin_OSD)
+def OSD_update_product(request):
+    if request.method == 'POST':
+        product_id = request.POST.get('product_id')
+        price = request.POST.get('price')
+        quantity = request.POST.get('quantity')
+        product = ProductModel.objects.get(id=product_id)
+        if price == "" and quantity == "":
+            return HttpResponseRedirect(reverse('App_main:OSD_admin_dashboard'))
+        elif price != "" and quantity != "":
+            product.No_of_available += int(quantity)
+            product.price_per_unit = int(price)
+            product.save()
+        elif quantity == "":
+            product.price_per_unit = int(price)
+            product.save()
+        elif price == "":
+            product.No_of_available += int(quantity)
+            product.save()
+    return HttpResponseRedirect(reverse('App_main:OSD_admin_dashboard'))
+
+
+@login_required
+@user_passes_test(is_admin_OSD)
+def OSD_delete_product(request, product_key):
+    product = ProductModel.objects.get(id=product_key)
+    product.delete()
+    return HttpResponseRedirect(reverse('App_main:OSD_admin_dashboard'))
+
+
+@login_required
+@user_passes_test(is_admin_OSD)
+def OSD_delete_shortage_table(request, table_key):
+    shortage_table = ShortageOfProduct.objects.get(id=table_key)
+    shortage_table.delete()
+    return HttpResponseRedirect(reverse('App_main:OSD_admin_dashboard'))
+
+
+@login_required
+@user_passes_test(is_admin_OSD)
+def OSD_admin_register_customer(request):
+    if request.method == "POST":
+        form = SignUpForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            try:
+                adminCheckbox = request.POST.get('admin-checkbox')
+            except:
+                adminCheckbox = None
+            my_admin_group = Group.objects.get_or_create(name='CUSTOMER')
+            my_admin_group[0].user_set.add(user)
+            messages.info(request, "Successfully Registered")
+            return HttpResponseRedirect(reverse('App_main:OSD_admin_dashboard'))
+        else:
+            messages.info(request, "Password doesn't match!!!")
+            return redirect('App_main:OSD_admin_dashboard')
+
+
+@login_required
+@user_passes_test(is_admin_OSD)
+def OSD_update_order_status(request):
+    if request.method == 'POST':
+        order_id = request.POST.get('order_id')
+        order = Order.objects.get(id=order_id)
+        order.status = request.POST.get("status_change")
+        order.save()
+        return HttpResponseRedirect(reverse('App_main:OSD_admin_dashboard'))
+
+
+@login_required
+@user_passes_test(is_admin_OSD)
+def OSD_add_new_product(request):
+    form = ProductModelForm()
+    if request.method == 'POST':
+        form = ProductModelForm(request.POST, request.FILES)
+        if form.is_valid():
+            form.save()
+            return HttpResponseRedirect(reverse('App_main:OSD-add-new-product'))
+
+    content = {
+        'form': form,
+    }
+    return render(request, 'App_main/OSD_Admin_add_new_product.html', context=content)
+
+
+@login_required
+@user_passes_test(is_admin_OSD)
+def OSD_add_category(request):
+    if request.method == 'POST':
+        cat = request.POST.get('cat-name')
+        category = CategoryModel(name=cat)
+        category.save()
+        return HttpResponseRedirect(reverse('App_main:OSD-add-new-product'))
+
+
+@login_required
+@user_passes_test(is_admin_OSD)
+def OSD_admin_generates_invoice(request, OrderID):
+    order = Order.objects.get(id=OrderID)
+    total = list(range(1, len(order.order_items.all()) + 1))
+    zip_item = zip(total, list(order.order_items.all()))
+    content = {
+        'order': order,
+        'total_and_order': zip_item,
+    }
+    return render(request, 'App_main/invoice_page.html', context=content)
+
+
+# <!-- Admin ISD -->
+
+@login_required
+@user_passes_test(is_admin_ISD)
+def ISD_admin_dashboard(request):
+    form = SignUpForm()
+    total_user = User.objects.filter(is_superuser=False, groups=2)
+    t_user = []
+    try:
+        for i in total_user:
+            if i.profile_user.shop.city == 'Dhaka':
+                t_user.append(i)
+    except Exception as e:
+        pass
+    total_customer = len(t_user)
+    total_product = ProductModel.objects.all()
+    total_orders = Order.objects.all()
+    t_order = []
+    for i in total_orders:
+        t_order.append(i)
+    completed_orders = Order.objects.filter(status='Completed')
+    pending_order = []
+    for i, j in zip(total_orders, completed_orders):
+        if j == i:
+            pass
+        else:
+            pending_order.append(i)
+    total_shortages = ShortageOfProduct.objects.all()
+    content = {
+        'all_customers': t_user,
+        'total_customer': total_customer,
+        'total_product': total_product,
+        'total_orders': total_orders,
+        'total_shortage': total_shortages,
+        'signupForm': form,
+    }
+    return render(request, 'App_main/ISD_Admin_dashboard.html', context=content)
+
+
+@login_required
+@user_passes_test(is_admin_ISD)
+def ISD_admin_updates_asking_quantity(request):
+    if request.method == 'POST':
+        orderID = request.POST.get('orderID')
+        quantity = request.POST.getlist('quantity')
+        theOrders = Order.objects.get(id=orderID)
+        for i, j in zip(theOrders.order_items.all(), quantity):
+            j_int = int(j)
+            if i.quantity < j_int:
+                i.item.No_of_available -= (j_int - i.quantity)
+            elif i.quantity > j_int:
+                i.item.No_of_available += (i.quantity - j_int)
+            i.item.save()
+            i.quantity = j
+            i.save()
+        return HttpResponseRedirect(reverse('App_main:ISD_admin_dashboard'))
+
+
+@login_required
+@user_passes_test(is_admin_ISD)
+def ISD_update_product(request):
+    if request.method == 'POST':
+        product_id = request.POST.get('product_id')
+        price = request.POST.get('price')
+        quantity = request.POST.get('quantity')
+        product = ProductModel.objects.get(id=product_id)
+        if price == "" and quantity == "":
+            return HttpResponseRedirect(reverse('App_main:ISD_admin_dashboard'))
+        elif price != "" and quantity != "":
+            product.No_of_available += int(quantity)
+            product.price_per_unit = int(price)
+            product.save()
+        elif quantity == "":
+            product.price_per_unit = int(price)
+            product.save()
+        elif price == "":
+            product.No_of_available += int(quantity)
+            product.save()
+    return HttpResponseRedirect(reverse('App_main:ISD_admin_dashboard'))
+
+
+@login_required
+@user_passes_test(is_admin_ISD)
+def ISD_delete_product(request, product_key):
+    product = ProductModel.objects.get(id=product_key)
+    product.delete()
+    return HttpResponseRedirect(reverse('App_main:ISD_admin_dashboard'))
+
+
+@login_required
+@user_passes_test(is_admin_ISD)
+def ISD_delete_shortage_table(request, table_key):
+    shortage_table = ShortageOfProduct.objects.get(id=table_key)
+    shortage_table.delete()
+    return HttpResponseRedirect(reverse('App_main:ISD_admin_dashboard'))
+
+
+@login_required
+@user_passes_test(is_admin_ISD)
+def ISD_admin_register_customer(request):
+    if request.method == "POST":
+        form = SignUpForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            try:
+                adminCheckbox = request.POST.get('admin-checkbox')
+            except:
+                adminCheckbox = None
+
+            if adminCheckbox:
+                my_admin_group = Group.objects.get_or_create(name='ADMIN')
+                my_admin_group[0].user_set.add(user)
+            else:
+                my_admin_group = Group.objects.get_or_create(name='CUSTOMER')
+                my_admin_group[0].user_set.add(user)
+            messages.info(request, "Successfully Registered")
+            return HttpResponseRedirect(reverse('App_main:ISD_admin_dashboard'))
+        else:
+            messages.info(request, "Password doesn't match!!!")
+            return redirect('App_main:ISD_admin_dashboard')
+
+
+@login_required
+@user_passes_test(is_admin_ISD)
+def ISD_update_order_status(request):
+    if request.method == 'POST':
+        order_id = request.POST.get('order_id')
+        order = Order.objects.get(id=order_id)
+        order.status = request.POST.get("status_change")
+        order.save()
+        return HttpResponseRedirect(reverse('App_main:ISD_admin_dashboard'))
+
+
+@login_required
+@user_passes_test(is_admin_ISD)
+def ISD_add_new_product(request):
+    form = ProductModelForm()
+    if request.method == 'POST':
+        form = ProductModelForm(request.POST, request.FILES)
+        if form.is_valid():
+            form.save()
+            return HttpResponseRedirect(reverse('App_main:ISD-add-new-product'))
+
+    content = {
+        'form': form,
+    }
+    return render(request, 'App_main/ISD_Admin_add_new_product.html', context=content)
+
+
+@login_required
+@user_passes_test(is_admin_ISD)
+def ISD_add_category(request):
+    if request.method == 'POST':
+        cat = request.POST.get('cat-name')
+        category = CategoryModel(name=cat)
+        category.save()
+        return HttpResponseRedirect(reverse('App_main:ISD-add-new-product'))
+
+
+@login_required
+@user_passes_test(is_admin_ISD)
+def ISD_admin_generates_invoice(request, OrderID):
+    order = Order.objects.get(id=OrderID)
+    total = list(range(1, len(order.order_items.all()) + 1))
+    zip_item = zip(total, list(order.order_items.all()))
+    content = {
+        'order': order,
+        'total_and_order': zip_item,
+    }
+    return render(request, 'App_main/invoice_page.html', context=content)
+
+
+diction = {
+    "January": 1,
+    'February': 2,
+    'March': 3,
+    'April': 4,
+    'May': 5,
+    'June': 6,
+    'July': 7,
+    'August': 8,
+    'September': 9,
+    'October': 10,
+    'November': 11,
+    'December': 12,
+}
+
+
+def this_month_orders(request):
+    content = {
+    }
+    order_this_month = {}
+    if request.method == 'POST':
+        month = request.POST.get('month')
+        year = request.POST.get('year')
+        total_order_in_that_month = Order.objects.filter(created__month=diction[month], created__year=year)
+        content['order_of_this_month'] = total_order_in_that_month
+        print(total_order_in_that_month)
+    return render(request, 'App_main/this_month_orders.html', context=content)

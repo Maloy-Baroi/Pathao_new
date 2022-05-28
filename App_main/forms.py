@@ -19,7 +19,7 @@ class ProfileForm(forms.ModelForm):
 class ProfilePictureChangeForm(forms.ModelForm):
     class Meta:
         model = Profile
-        fields = ['profile_picture']
+        fields = "__all__"
 
 
 class BillingForm(forms.ModelForm):
