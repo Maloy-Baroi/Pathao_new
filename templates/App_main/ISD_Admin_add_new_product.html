@@ -1,4 +1,4 @@
-{% extends 'App_main/BossAdmin_base.html' %}
+{% extends 'App_main/ISD_Admin_base.html' %}
 {% load crispy_forms_filters %}
 {% load static %}
 {% block main %}
@@ -143,7 +143,8 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <form action="{% url 'App_main:boss-add-new-category' %}" method="post" class="justify-content-center">
+                    <form action="{% url 'App_main:boss-add-new-category' %}" method="post"
+                          class="justify-content-center">
                         {% csrf_token %}
                         <input type="text" name="cat-name"
                                style="width: 100%; background-color: rgb(208,208,208); color: #000000;">

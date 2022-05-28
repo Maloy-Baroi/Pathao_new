@@ -1,4 +1,4 @@
-{% extends 'App_main/BossAdmin_base.html' %}
+{% extends 'App_main/OSD_Admin_base.html' %}
 {% load static %}
 {% load crispy_forms_filters %}
 {% block main %}
@@ -133,10 +133,6 @@
         .card-title {
             font-size: 15px;
         }
-
-        #hint_id_password2 {
-            display: none;
-        }
     </style>
     {% if messages %}
         {% for message in messages %}
@@ -157,15 +153,9 @@
                     <div class="modal-body">
                         {% csrf_token %}
                         {{ signupForm|crispy }}
-                        <div class="form-floating">
-                            <select name="admin-type" class="form-select" id="floatingSelect" aria-label="Floating label select example"
-                                    required>
-                                <option value="ADMIN">Admin</option>
-                                <option value="OSD_ADMIN">OSD Admin</option>
-                                <option value="ISD_ADMIN">ISD Admin</option>
-                            </select>
-                            <label for="floatingSelect">Admin Type</label>
-                        </div>
+                        <input type="checkbox" id="id-admin-checkbox" name="admin-checkbox" style="width: 4%"
+                               value="Yes" checked required>
+                        <label for="id-admin-checkbox">Admin</label>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-dark" data-bs-dismiss="modal">Close
@@ -200,20 +190,10 @@
         </div>
     </div>
     <div class="container mb-3">
-        <a class="btn btn-success w-25" href="{% url 'App_main:boss-add-new-product' %}">Add new product</a>
+        <a class="btn btn-success w-25" href="{% url 'App_main:osd-add-new-product' %}">Add new product</a>
     </div>
     <div class="container">
         <div class="row">
-            <div class="col-md-3 p-3">
-                <div class="card" onclick="customer_show()">
-                    <div class="card-body">
-                        <h2 class="card-title">No. of Customer</h2>
-                        <div style="float: right; margin-bottom: 0;">
-                            <h3 class="card-subtitle m-2 text-muted float-right">{{ total_customer }}</h3>
-                        </div>
-                    </div>
-                </div>
-            </div>
             <div class="col-md-3 p-3">
                 <div class="card" onclick="product_show()">
                     <div class="card-body">
@@ -225,11 +205,23 @@
                 </div>
             </div>
             <div class="col-md-3 p-3">
+                <div class="card" onclick="customer_show()">
+                    <div class="card-body">
+                        <h2 class="card-title">No. of Customer</h2>
+                        <div style="float: right; margin-bottom: 0;">
+                            <h3 class="card-subtitle m-2 text-muted float-right">{{ total_customer }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 p-3">
                 <div class="card" onclick="order_show()">
                     <div class="card-body">
                         <h2 class="card-title">No. of Orders</h2>
                         <div style="float: right; margin-bottom: 0;">
-                            <h3 class="card-subtitle m-2 text-muted float-right">{{ total_orders.count }}</h3>
+                            <h3 class="card-subtitle m-2 text-muted float-right">
+                                {{ no_of_total_orders }}
+                            </h3>
                         </div>
                     </div>
                 </div>
@@ -455,7 +447,6 @@
                 <thead>
                 <tr>
                     <th scope="col">Email</th>
-                    <th scope="col">Profile Picture</th>
                     <th scope="col">Customer Name</th>
                     <th scope="col">Phone Number</th>
                     <th scope="col">Shop Address</th>
@@ -468,24 +459,16 @@
                         <td data-label="Email">
                             {{ customer.email }}
                         </td>
-                        {% if customer.profile_user.shop_address %}
-                            <td data-label="Profile Picture">
-                                <img class="product-image-cls" src="{{ customer.profile_user.profile_picture.url }}"
-                                     alt="Image">
-                                <p style="display:none;">
-                                    http://{{ request.META.HTTP_HOST }}/media/{{ customer.profile_user.profile_picture }}
-                                </p>
-                            </td>
-                            </td>
+                        {% if customer.profile_user %}
                             <td data-label="Customer Name">{{ customer.profile_user.full_name }}</td>
                             <td data-label="Phone Number">
-                                {{ customer.profile_user.phone_number }}
+                                {{ customer.profile_user.shop.primary_phone_number }}
                             </td>
                             <td data-label="Shop Address">
-                                {{ customer.profile_user.shop_address }}
+                                {{ customer.profile_user.shop.shop_address }}
                             </td>
                             <td data-label="City">
-                                {{ customer.profile_user.city }} - {{ customer.profile_user.zipcode }}
+                                {{ customer.profile_user.shop.city }} - {{ customer.profile_user.shop.zipcode }}
                             </td>
                         {% endif %}
                     </tr>

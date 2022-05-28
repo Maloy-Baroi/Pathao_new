@@ -163,6 +163,9 @@
             </div>
         </div>
     </div>
+    <div class="container mb-3">
+        <a class="btn btn-success w-100" href="{% url 'App_main:add-new-product' %}">Add new product</a>
+    </div>
     <div class="container">
         <div class="row">
             <div class="col-md-3 p-3">
@@ -289,9 +292,6 @@
                 {% endfor %}
                 </tbody>
             </table>
-            <div class="container mb-3">
-                <a class="btn btn-success w-100" href="{% url 'App_main:add-new-product' %}">Add new product</a>
-            </div>
         </div>
         <div id="product_shortage_table" style="display: none">
             <table id="id-all-shortage-table">
@@ -391,7 +391,7 @@
                                 <input type="number" name="order_id" style="display: none;" value="{{ order.id }}">
                                 <select style="width: 100%" name="status_change" id="id-status-change">
                                     <option value="Processing">Processing</option>
-{#                                    <option value="Confirm">Confirm</option>#}
+                                    {#                                    <option value="Confirm">Confirm</option>#}
                                     <option value="Rejected">Rejected</option>
                                     <option value="Completed">Completed</option>
                                     <option value="Final approval from boss">Final approval from boss</option>

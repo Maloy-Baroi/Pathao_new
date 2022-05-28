@@ -1,4 +1,4 @@
-{% extends 'App_main/BossAdmin_base.html' %}
+{% extends 'App_main/ISD_Admin_base.html' %}
 {% load static %}
 {% load crispy_forms_filters %}
 {% block main %}
@@ -133,10 +133,6 @@
         .card-title {
             font-size: 15px;
         }
-
-        #hint_id_password2 {
-            display: none;
-        }
     </style>
     {% if messages %}
         {% for message in messages %}
@@ -157,15 +153,9 @@
                     <div class="modal-body">
                         {% csrf_token %}
                         {{ signupForm|crispy }}
-                        <div class="form-floating">
-                            <select name="admin-type" class="form-select" id="floatingSelect" aria-label="Floating label select example"
-                                    required>
-                                <option value="ADMIN">Admin</option>
-                                <option value="OSD_ADMIN">OSD Admin</option>
-                                <option value="ISD_ADMIN">ISD Admin</option>
-                            </select>
-                            <label for="floatingSelect">Admin Type</label>
-                        </div>
+                        <input type="checkbox" id="id-admin-checkbox" name="admin-checkbox" style="width: 4%"
+                               value="Yes" checked required>
+                        <label for="id-admin-checkbox">Admin</label>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-dark" data-bs-dismiss="modal">Close
@@ -200,7 +190,7 @@
         </div>
     </div>
     <div class="container mb-3">
-        <a class="btn btn-success w-25" href="{% url 'App_main:boss-add-new-product' %}">Add new product</a>
+        <a class="btn btn-success w-25" href="{% url 'App_main:ISD-add-new-product' %}">Add new product</a>
     </div>
     <div class="container">
         <div class="row">
@@ -404,13 +394,12 @@
                                 <b>{{ item.item.product_name }}</b>, <br>
                             {% endfor %}
                         </td>
-                        <form action="{% url 'App_main:update-order-item-quantity' %}" method="post">
+                        <form action="{% url 'App_main:ISD-update-order-item-quantity' %}" method="post">
                             {% csrf_token %}
                             <input type="number" name="orderID" value="{{ order.id }}" style="display: none;">
                             <td data-label="Asking Quantity">
                                 {% for order_name in order.order_items.all %}
                                     <input type="number" name="quantity" value="{{ order_name.quantity }}">
-                                    {#                                    <b>{{ order_name.quantity }}, </b>#}
                                 {% endfor %}
                                 <button class="btn btn-warning" type="submit">Update Quantity</button>
                             </td>
@@ -418,7 +407,7 @@
                         <td data-label="Price">
                             {{ order.get_order_total }}
                         </td>
-                        <form action="{% url 'App_main:update-order-status' %}" method="post">
+                        <form action="{% url 'App_main:ISD-update-order-status' %}" method="post">
                             {% csrf_token %}
                             <td data-label="Status">
                                 {{ order.status }}
@@ -426,8 +415,10 @@
                             <td data-label="Action">
                                 <input type="number" name="order_id" style="display: none;" value="{{ order.id }}">
                                 <select style="width: 100%" name="status_change" id="id-status-change">
-                                    <option value="Confirmed">Confirmed</option>
+                                    <option value="Processing">Processing</option>
+                                    <option value="Rejected">Rejected</option>
                                     <option value="Completed">Completed</option>
+                                    <option value="Final approval from boss">Final approval from boss</option>
                                 </select>
                                 <div id="" class="m-1">
                                     <button class="btn btn-success m-1" type="submit">
