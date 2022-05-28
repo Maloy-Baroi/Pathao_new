@@ -61,16 +61,20 @@ class User(AbstractBaseUser, PermissionsMixin):
         return self.email
 
 
-class Profile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile_user')
-    full_name = models.CharField(max_length=264, blank=True, null=True)
-    phone_number = models.CharField(max_length=20)
+class CustomerShop(models.Model):
+    primary_phone_number = models.CharField(max_length=20)
     shop_address = models.TextField(max_length=200)
     House = models.TextField(max_length=300, blank=True, null=True)
     city = models.CharField(max_length=40, blank=True, null=True)
     zipcode = models.CharField(max_length=10, blank=True, null=True)
-    profile_picture = models.ImageField(upload_to='profile_picture/')
     date_joined = models.DateTimeField(auto_now_add=True, null=True)
+
+
+class Profile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile_user')
+    full_name = models.CharField(max_length=264, blank=True, null=True)
+    secondary_phone_number = models.CharField(max_length=20)
+    shop = models.ForeignKey(CustomerShop, on_delete=models.CASCADE, related_name='customer_shop')
 
     def is_fully_filled(self):
         fields_names = [f.name for f in self._meta.get_fields()]

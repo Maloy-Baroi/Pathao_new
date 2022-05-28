@@ -16,6 +16,14 @@ def is_admin(user):
     return user.groups.filter(name="ADMIN").exists()
 
 
+def is_admin_OSD(user):
+    return user.groups.filter(name="OSD_ADMIN").exists()
+
+
+def is_admin_ISD(user):
+    return user.groups.filter(name="ISD_ADMIN").exists()
+
+
 def is_boss_admin(user):
     return user.groups.filter(name="BOSS_ADMIN").exists()
 
@@ -40,6 +48,12 @@ def login_view(request):
                     return HttpResponseRedirect(reverse('App_main:boss_admin_dashboard'))
                 elif is_customer(user):
                     return HttpResponseRedirect(reverse('App_main:customer_dashboard'))
+                elif is_admin_OSD(user):
+                    print("OSD")
+                    return HttpResponseRedirect(reverse('App_main:OSD_admin_dashboard'))
+                elif is_admin_ISD(user):
+                    print("ISD")
+                    return HttpResponseRedirect(reverse('App_main:ISD_admin_dashboard'))
     content = {
         'form': form,
     }
